@@ -11,9 +11,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: $HOME/android-sdk
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -23,40 +20,13 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: 'gradle'
 
-    - name: Install Android SDK & Create AVD
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y unzip wget
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
 
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-        cd $ANDROID_SDK_ROOT/cmdline-tools/latest
-
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip
-        mv cmdline-tools/* . && rmdir cmdline-tools
-
-        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-
-        yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
-        yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
-          "platform-tools" \
-          "emulator" \
-          "platforms;android-30" \
-          "system-images;android-30;google_apis;x86_64" \
-          "build-tools;30.0.3"
-
-        echo "y" | avdmanager create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --device "pixel"
-
-    - name: Start Android Emulator
-      run: |
-        export PATH=$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/platform-tools:$PATH
-        nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test_avd -no-window -no-audio -gpu off &
-        $ANDROID_SDK_ROOT/platform-tools/adb wait-for-device
-        sleep 30
-
-    - name: Make gradlew executable
-      run: chmod +x gradlew
+    - name: Build App
+      run: ./gradlew assemble
       working-directory: ./LoginTestApp
 
     - name: Build with Gradle
