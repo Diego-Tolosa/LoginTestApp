@@ -16,29 +16,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17  # Cambiado a JDK 17 para compatibilidad con sdkmanager
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 11
+          java-version: 17
 
-      - name: Set up Android SDK
+      - name: Set up Android SDK  # Configuración simplificada
         uses: android-actions/setup-android@v3
         with:
-          api-level: 30
-          build-tools-version: '30.0.3'
-          ndk-version: '21.4.7075529'
-          cmake-version: '3.18.1'
-          additional-sdk-components: 'emulator,platform-tools'
+          cmdline-tools-version: 'latest'  # Usar versión más reciente
+          accept-android-sdk-licenses: true  # Aceptar licencias automáticamente
+          packages: |  # Especificar paquetes necesarios
+            emulator
+            platform-tools
+            platforms;android-30
+            system-images;android-30;google_apis;x86_64
+            build-tools;30.0.3
+
+      - name: Configure environment variables
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
 
       - name: Create and start emulator
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "emulator" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
-          
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
-          
+          # Crear AVD
           avdmanager create avd --force \
             --name test \
             --package "system-images;android-30;google_apis;x86_64" \
@@ -46,23 +49,18 @@ jobs:
             --tag "google_apis" \
             --abi "x86_64"
           
-          nohup $ANDROID_SDK_ROOT/emulator/emulator \
-            -avd test \
+          # Iniciar emulador
+          nohup emulator -avd test \
             -no-audio \
             -no-window \
             -no-snapshot \
             -gpu swiftshader_indirect \
-            -camera-back none \
-            -camera-front none \
             -no-boot-anim \
             -memory 2048 \
-            -partition-size 2048 \
-            -accel auto &
+            -partition-size 2048 &
           
-          $ANDROID_SDK_ROOT/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
-          
-          $ANDROID_SDK_ROOT/platform-tools/adb devices
-          $ANDROID_SDK_ROOT/platform-tools/adb shell getprop
+          # Esperar a que el emulador esté listo
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
       - name: Grant permissions to gradlew
         run: chmod +x ./gradlew
