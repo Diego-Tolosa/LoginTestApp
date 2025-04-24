@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  ANDROID_SDK_ROOT: $HOME/android-sdk
+
 jobs:
   build:
 
@@ -20,37 +23,27 @@ jobs:
         java-version: '17'   
         distribution: 'temurin'
 
-    - name: Configure environment
+    - name: Install Android SDK & Create AVD
       run: |
-        echo "Installing Android SDK"
         sudo apt update
         sudo apt install -y wget unzip
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        cd $ANDROID_SDK_ROOT/cmdline-tools
         wget https://dl.google.com/android/repository/commandlinetools-linux-7302050_latest.zip
-        unzip commandlinetools-linux-7302050_latest.zip -d $HOME/android-sdk
-        yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --update
-        yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "build-tools;30.0.3" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
-        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_ROOT/tools" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_ROOT/tools/bin" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
-
-    - name: Create Android Virtual Device (AVD)
+        unzip commandlinetools-linux-7302050_latest.zip -d tools
+        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$PATH
+  
+        yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
+        yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-30" "build-tools;30.0.3" "system-images;android-30;google_apis;x86_64" "emulator"
+  
+        echo no | avdmanager --sdk_root=$ANDROID_SDK_ROOT create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --force
+  
+    - name: Start Emulator
       run: |
-        echo "Creating Android Virtual Device..."
-        # Crear el AVD con la imagen google_apis para Android 30
-        echo no | $HOME/android-sdk/cmdline-tools/bin/avdmanager create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --force
-        echo "AVD test_avd created."
-    
-    - name: Start Android Emulator
-      run: |
-        echo "Starting Android Emulator..."
-        nohup $HOME/android-sdk/emulator/emulator -avd test_avd -no-window -no-audio -gpu off &
-        # Esperar que el emulador arranque
-        $HOME/android-sdk/platform-tools/adb wait-for-device
-        # Aceptar los términos de la licencia
-        $HOME/android-sdk/platform-tools/adb shell input keyevent 82
-        sleep 60  # Espera 1 minuto para asegurarse de que el emulador está listo
+        $ANDROID_SDK_ROOT/emulator/emulator -list-avds
+        nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test_avd -no-window -no-audio -gpu off -verbose &
+        $ANDROID_SDK_ROOT/platform-tools/adb wait-for-device
+        sleep 60
 
     - name: Make gradlew executable
       run: chmod +x gradlew
