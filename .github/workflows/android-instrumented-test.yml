@@ -6,46 +6,53 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  ANDROID_SDK_ROOT: $HOME/android-sdk
-
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_SDK_ROOT: $HOME/android-sdk
+
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: '17'   
+        java-version: '17'
         distribution: 'temurin'
 
     - name: Install Android SDK & Create AVD
       run: |
-        sudo apt update
-        sudo apt install -y wget unzip
+        sudo apt-get update
+        sudo apt-get install -y unzip wget
+
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         cd $ANDROID_SDK_ROOT/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-7302050_latest.zip -O cmdline-tools.zip
+
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
         unzip cmdline-tools.zip -d latest
 
-        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
 
-        yes | sdkmanager --licenses
-        yes | sdkmanager "platform-tools" "build-tools;30.0.3" "platforms;android-30" "system-images;android-30;google_apis;x86_64" "emulator"
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+          "platform-tools" \
+          "emulator" \
+          "platforms;android-30" \
+          "system-images;android-30;google_apis;x86_64" \
+          "build-tools;30.0.3"
 
-        echo no | avdmanager create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --device "pixel"
-
+        echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/avdmanager create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --device "pixel"
 
     - name: Start Android Emulator
       run: |
-        echo "Starting Android Emulator..."
-        $ANDROID_SDK_ROOT/emulator/emulator -list-avds
-        nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test_avd -no-window -no-audio -gpu off -verbose &
+        export PATH=$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/platform-tools:$PATH
+        nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test_avd -no-window -no-audio -gpu off &
         $ANDROID_SDK_ROOT/platform-tools/adb wait-for-device
-        sleep 60
+        sleep 30
 
     - name: Make gradlew executable
       run: chmod +x gradlew
@@ -62,3 +69,4 @@ jobs:
     - name: Run Instrumented Tests
       run: ./gradlew connectedCheck
       working-directory: ./LoginTestApp
+
