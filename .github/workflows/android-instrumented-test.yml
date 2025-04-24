@@ -27,10 +27,13 @@ jobs:
       - name: Create emulator
         run: |
           echo "y" | sdkmanager "system-images;android-30;google_apis;x86"
+          sdkmanager --install "emulator"
+          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$PATH
           avdmanager create avd -n test -k "system-images;android-30;google_apis;x86" --device "pixel"
-          emulator -avd test -no-snapshot -no-window -no-audio &
-          adb wait-for-device
-          adb shell input keyevent 82 &
+          nohup emulator -avd test -no-snapshot -no-window -no-audio -no-boot-anim &
+          timeout 300s adb wait-for-device
+          adb shell input keyevent 82
 
       - name: Grant permissions to gradlew
         run: chmod +x ./gradlew
