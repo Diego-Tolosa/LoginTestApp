@@ -22,11 +22,28 @@ jobs:
 
     - name: Configure environment
       run: |
+        echo "Installing Android SDK"
+        sudo apt update
+        sudo apt install -y wget unzip
+        wget https://dl.google.com/android/repository/commandlinetools-linux-7302050_latest.zip
+        unzip commandlinetools-linux-7302050_latest.zip -d $HOME/android-sdk
+        yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --update
+        yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "build-tools;30.0.3" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
         echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
         echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
         echo "$ANDROID_SDK_ROOT/tools" >> $GITHUB_PATH
         echo "$ANDROID_SDK_ROOT/tools/bin" >> $GITHUB_PATH
         echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+    
+    - name: Start Android Emulator
+      run: |
+        echo "Starting Android Emulator..."
+        nohup $HOME/android-sdk/emulator/emulator -avd test_avd -no-window -no-audio -gpu off &
+        # Esperar que el emulador arranque
+        $HOME/android-sdk/platform-tools/adb wait-for-device
+        # Aceptar los términos de la licencia
+        $HOME/android-sdk/platform-tools/adb shell input keyevent 82
+        sleep 60  # Espera 1 minuto para asegurarse de que el emulador está listo
 
     - name: Make gradlew executable
       run: chmod +x gradlew
@@ -38,17 +55,6 @@ jobs:
 
     - name: Run Unit Tests
       run: ./gradlew test
-      working-directory: ./LoginTestApp
-
-    - name: Start Android Emulator
-      run: |
-        echo "Starting Android Emulator..."
-        nohup $HOME/android-sdk/emulator/emulator -avd test_avd -no-window -no-audio -gpu off &
-        # Esperar que el emulador arranque
-        $HOME/android-sdk/platform-tools/adb wait-for-device
-        # Aceptar los términos de la licencia
-        $HOME/android-sdk/platform-tools/adb shell input keyevent 82
-        sleep 60  # Espera 1 minuto para asegurarse de que el emulador está listo
       working-directory: ./LoginTestApp
 
     - name: Run Instrumented Tests
