@@ -20,23 +20,13 @@ jobs:
         java-version: '11'   # <-- Recomendado para evitar errores XML
         distribution: 'temurin'
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Accept Licenses
-      run: yes | sdkmanager --licenses
-
-    - name: Install Emulator System Image
-      run: echo "y" | sdkmanager "system-images;android-30;google_apis;x86"
-
-    - name: Create AVD
-      run: echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86" -d pixel
-
-    - name: Start Emulator
+    - name: Configure environment
       run: |
-        emulator -avd test -no-audio -no-window &
-        adb wait-for-device
-        adb shell input keyevent 82
+        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/tools" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/tools/bin" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
     - name: Build with Gradle
       run: ./gradlew build
