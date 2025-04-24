@@ -11,7 +11,6 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -29,17 +28,20 @@ jobs:
         sudo apt install -y wget unzip
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         cd $ANDROID_SDK_ROOT/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-7302050_latest.zip
-        unzip commandlinetools-linux-7302050_latest.zip -d tools
-        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$PATH
-  
-        yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
-        yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-30" "build-tools;30.0.3" "system-images;android-30;google_apis;x86_64" "emulator"
-  
-        echo no | avdmanager --sdk_root=$ANDROID_SDK_ROOT create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --force
-  
-    - name: Start Emulator
+        wget https://dl.google.com/android/repository/commandlinetools-linux-7302050_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d latest
+
+        export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+
+        yes | sdkmanager --licenses
+        yes | sdkmanager "platform-tools" "build-tools;30.0.3" "platforms;android-30" "system-images;android-30;google_apis;x86_64" "emulator"
+
+        echo no | avdmanager create avd -n test_avd -k "system-images;android-30;google_apis;x86_64" --device "pixel"
+
+
+    - name: Start Android Emulator
       run: |
+        echo "Starting Android Emulator..."
         $ANDROID_SDK_ROOT/emulator/emulator -list-avds
         nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test_avd -no-window -no-audio -gpu off -verbose &
         $ANDROID_SDK_ROOT/platform-tools/adb wait-for-device
