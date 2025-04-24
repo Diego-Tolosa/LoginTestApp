@@ -40,6 +40,16 @@ jobs:
       run: ./gradlew test
       working-directory: ./LoginTestApp
 
+    - name: Start Android Emulator
+      run: |
+        echo "Starting Android Emulator..."
+        nohup $HOME/android-sdk/emulator/emulator -avd test_avd -no-window -no-audio -gpu off &
+        # Esperar que el emulador arranque
+        $HOME/android-sdk/platform-tools/adb wait-for-device
+        # Aceptar los términos de la licencia
+        $HOME/android-sdk/platform-tools/adb shell input keyevent 82
+        sleep 60  # Espera 1 minuto para asegurarse de que el emulador está listo
+
     - name: Run Instrumented Tests
       run: ./gradlew connectedCheck
       working-directory: ./LoginTestApp
