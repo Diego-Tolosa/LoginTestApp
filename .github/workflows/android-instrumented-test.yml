@@ -24,13 +24,13 @@ jobs:
 
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
+    
+    - name: Build with Gradle
+      run: ./gradlew build
+      working-directory: ./LoginTestApp
 
     - name: Build App
       run: ./gradlew assemble
-      working-directory: ./LoginTestApp
-
-    - name: Build with Gradle
-      run: ./gradlew build
       working-directory: ./LoginTestApp
 
     - name: Run Unit Tests
