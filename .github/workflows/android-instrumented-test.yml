@@ -11,6 +11,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      AVD_NAME: testAVD
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -25,28 +29,32 @@ jobs:
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
 
-    - name: Set up Android SDK Command-line Tools
+    - name: Install Android SDK commandline tools
       run: |
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        cd $ANDROID_HOME/cmdline-tools
-        curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o cmdline-tools.zip
-        unzip cmdline-tools.zip
-        mv cmdline-tools latest
-        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        cd $ANDROID_SDK_ROOT/cmdline-tools
+        curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+        unzip tools.zip -d latest
+        echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
-    - name: Accept Licenses and Install Emulator
+    - name: Install Android SDK components
       run: |
         yes | sdkmanager --licenses
-        sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+        sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
 
-    - name: Create and Start Emulator
+    - name: Create Android Emulator
       run: |
-        echo "no" | avdmanager create avd -n testAVD -k "system-images;android-33;google_apis;x86_64" --device "pixel"
-        $ANDROID_HOME/emulator/emulator -avd testAVD -no-snapshot -no-window -no-audio -gpu swiftshader_indirect &
-        adb wait-for-device
-        adb shell settings put global window_animation_scale 0 &
-        adb shell settings put global transition_animation_scale 0 &
-        adb shell settings put global animator_duration_scale 0 &
+        avdmanager create avd -n $AVD_NAME -k "system-images;android-33;google_apis;x86_64" --device "pixel"
+
+    - name: Start Emulator
+      run: |
+        nohup $ANDROID_SDK_ROOT/emulator/emulator -avd $AVD_NAME -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+        timeout 360s bash -c "until adb shell getprop sys.boot_completed | grep -m 1 '1'; do sleep 5; done"
+        adb shell settings put global window_animation_scale 0
+        adb shell settings put global transition_animation_scale 0
+        adb shell settings put global animator_duration_scale 0
 
     - name: Make gradlew executable
       run: chmod +x gradlew
