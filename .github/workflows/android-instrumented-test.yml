@@ -44,6 +44,9 @@ jobs:
         yes | sdkmanager --licenses
         sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
 
+    - name: Create AVD directory
+      run: mkdir -p $HOME/.android/avd
+  
     - name: Create Android Emulator
       run: |
         avdmanager create avd -n $AVD_NAME -k "system-images;android-33;google_apis;x86_64" --device "pixel"
